@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  avatar        String?
+  phone         String?
+  roleId        String
+  statusId      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  role          Role          @relation(fields: [roleId], references: [id])
+  status        UserStatus    @relation(fields: [statusId], references: [id])
+  listings      Listing[]
+  favorites     Favorite[]
+  chatsAsUser1  Chat[]        @relation("ChatUser1")
+  chatsAsUser2  Chat[]        @relation("ChatUser2")
+  messages      Message[]
+  businesses    Business[]
+  reviews       Review[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([roleId])
+  @@index([statusId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions Json?
+  users       User[]
+
+  @@index([name])
+}
+
+model UserStatus {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String?
+  users       User[]
+
+  @@index([name])
+}
+
+model City {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  nameEn     String?
+  province   String
+  latitude   Float?
+  longitude  Float?
+  population Int?
+  listings   Listing[]
+  businesses Business[]
+
+  @@index([name])
+  @@index([province])
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  nameEn      String?
+  icon        String
+  parentId    String?
+  sortOrder   Int        @default(0)
+
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  listings    Listing[]
+  businesses  Business[]
+
+  @@index([name])
+  @@index([parentId])
+}
+
+model Listing {
+  id              String  @id @default(cuid())
+  title           String
+  description     String
+  price           Float?
+  originalPrice   Float?
+  unit            String? @default("")
+  location        String
+  latitude        Float?
+  longitude       Float?
+  images          String[] @default([])
+  isNegotiable    Boolean @default(false)
+  isUrgent        Boolean @default(false)
+  views           Int     @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  statusId        String
+  userId          String
+  categoryId      String
+  cityId          String
+
+  status          ListingStatus @relation(fields: [statusId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+  category        Category      @relation(fields: [categoryId], references: [id])
+  city            City          @relation(fields: [cityId], references: [id])
+  favorites       Favorite[]
+  messages        Message[]
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([cityId])
+  @@index([statusId])
+  @@index([createdAt])
+}
+
+model Business {
+  id              String   @id @default(cuid())
+  name            String
+  description     String
+  address         String
+  phone           String
+  email           String?
+  website         String?
+  images          String[] @default([])
+  workingHours    String?
+  rating          Float    @default(0)
+  reviewCount     Int      @default(0)
+  tags            String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  statusId        String
+  userId          String
+  categoryId      String
+  cityId          String
+
+  status          BusinessStatus @relation(fields: [statusId], references: [id])
+  user            User           @relation(fields: [userId], references: [id])
+  category        Category       @relation(fields: [categoryId], references: [id])
+  city            City           @relation(fields: [cityId], references: [id])
+  reviews         Review[]
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([cityId])
+  @@index([statusId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  listingId String?
+
+  user      User     @relation(fields: [userId], references: [id])
+  listing   Listing? @relation(fields: [listingId], references: [id])
+
+  @@unique([userId, listingId])
+  @@index([userId])
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  content     String
+  rating      Int      @default(5)
+  images      String[] @default([])
+  createdAt   DateTime @default(now())
+
+  userId      String
+  businessId  String
+
+  user        User     @relation(fields: [userId], references: [id])
+  business    Business @relation(fields: [businessId], references: [id])
+
+  @@index([userId])
+  @@index([businessId])
+}
+
+model Chat {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user1Id     String
+  user2Id     String
+
+  user1       User     @relation("ChatUser1", fields: [user1Id], references: [id])
+  user2       User     @relation("ChatUser2", fields: [user2Id], references: [id])
+  messages    Message[]
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  content     String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  typeId      String
+  userId      String
+  chatId      String
+  listingId   String?
+
+  type        MessageType @relation(fields: [typeId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  chat        Chat        @relation(fields: [chatId], references: [id])
+  listing     Listing?    @relation(fields: [listingId], references: [id])
+
+  @@index([userId])
+  @@index([chatId])
+  @@index([listingId])
+}
+
+model ListingStatus {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  listings    Listing[]
+
+  @@index([name])
+}
+
+model BusinessStatus {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  businesses  Business[]
+
+  @@index([name])
+}
+
+model MessageType {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  messages    Message[]
+
+  @@index([name])
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}
